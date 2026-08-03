@@ -41,7 +41,7 @@ simple explain the issue
 with
 Cause :
 how to resolve : 
-wrote simply in common language
+wrote simply in common language and with cause 2 lines and how to resolve 3 lines 
 Return only plain text.
 """
 

@@ -2,6 +2,7 @@ from flask import Flask
 from docker_monitor import container_moniter
 from scheduler import scheduler
 import threading
+import webbrowser
 
 app = Flask(__name__)
 

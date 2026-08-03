@@ -185,11 +185,16 @@ def get_incident(incident_number):
 
 
 def get_open_incidents():
+    query = (
+        "state!=6",
+        "^sys_created_on=>javascript:gs.minutesAgoStart(30)"
+    )
 
-    query_url = f"{BASE_URL}?sysparm_query=state!=6"
+    q_url = f"{BASE_URL}?sysparm_query={query}"
+
 
     response = requests.get(
-        query_url,
+        q_url,
         auth=(USERNAME, PASSWORD),
         headers=HEADERS
     )

@@ -7,8 +7,26 @@ from gemini import analyze_recovery
 from service_now import update_incident
 from service_now import resolve_incident
 
+from docker_monitor import container_moniter
+
+
 client = docker.from_env()
 
+
+def monitor_job():
+    container_moniter()
+
+def start_scheduler():
+
+    scheduler_engine.add_job(
+        monitor_job,
+        "interval",
+        minutes=2
+    )
+
+    scheduler_engine.start()
+
+    print("Scheduler Started")
 
 def scheduler(container_name, incident_number):
 
@@ -20,9 +38,7 @@ def scheduler(container_name, incident_number):
 
             container = client.containers.get(container_name)
 
-            # -----------------------
-            # Container Running
-            # -----------------------
+    
 
             if container.status == "running":
 
@@ -43,10 +59,6 @@ def scheduler(container_name, incident_number):
                 print("Incident Resolved.")
 
                 break
-
-            # -----------------------
-            # Container Still Down
-            # -----------------------
 
             logs = container.logs(
                 tail=100
