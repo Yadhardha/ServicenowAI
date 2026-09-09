@@ -1,0 +1,99 @@
+- name : ServiceNow Automation
+  hosts: localhost
+  connection : local
+  gather_facts: no
+
+  vars_files:
+    - vars.yaml
+
+  tasks:
+    - name : get open incidents of last 10 mins
+      uri:
+        url : "https://dev381973.service-now.com/api/now/table/incident?sysparm_query=active=true^opened_at>=javascript:gs.minutesAgoStart(10)"
+        method: GET
+        user: "{{servicenow_username}}"
+        password: "{{servicenow_password}}"
+        force_basic_auth: yes
+        headers:
+          Accept: "application/json"
+        return_content: yes
+      register: incidents
+
+    - name : Display incidents
+      debug:
+        var: incidents.json.result
+
+    - name : Extract Kubernetes detail
+      set_fact:
+        pod_name: "{{ item.short_description | regex_search('Pod:\\s*([a-zA-Z0-9-]+)', '\\1') | first }}"
+        issue: "{{ item.short_description | regex_search('Issue:\\s*([A-Za-z0-9_]+)', '\\1') | first }}"
+        namespace: "{{ item.short_description | regex_search('Namespace:\\s*([a-zA-Z0-9-]+)', '\\1') | first }}"
+        container: "{{ item.short_description | regex_search('Container:\\s*([a-zA-Z0-9-]+)', '\\1') | first }}"
+        incident_number: "{{ item.number }}"
+        incident_sys_id: "{{ item.sys_id }}"
+      loop : "{{incidents.json.result}}"
+      register: parsed_incidents
+
+    - name : get pod details 
+      command : kubectl get pod {{pod_name}} -n {{namespace}}
+      register: pod_status
+      changed_when: false
+    - name : describe pod 
+      command : kubectl describe pod {{pod_name}} -n {{namespace}}
+      register: describe_pod
+      changed_when: false
+    - name : pods logs
+      command: kubectl logs {{pod_name}} -n {{namespace}}
+      register: pods_log
+      changed_when: false
+      ignore_errors: yes
+    - name: Get Previous logs 
+      command: kubectl logs {{pod_name}} -n {{namespace}} --previous
+      register: previous_logs
+      ignore_errors : yes
+      changed_when: false
+
+    - name : update ServiceNow Incident
+      uri:
+        url: "https://dev381973.service-now.com/api/now/table/incident/{{ incident_sys_id }}"
+        method: PATCH 
+        user: "{{servicenow_username}}"
+        password: "{{servicenow_password}}"
+        force_basic_auth: yes
+        headers:
+          Accept: "application/json"
+          Content-type: "application/json"
+        body_format: json 
+        body:
+          work_notes: |
+            Kubernetes diagnostics performed by ansible
+
+            Pod : {{pod_name}}
+            Namespace : {{namespace}}
+            Container: {{container}}
+            Issue : {{issue}}
+
+            ======POD STATUS =====
+            {{pod_status.stdout}}
+
+            ======POD Description =====
+            {{describe_pod.stdout}}
+
+            ====== POD Logs =========
+            {{pods_log.stdout}}
+            ====== Previous logs ======
+            {{previous_logs.stdout}}
+
+
+        status_code: 200
+      register: update_result
+
+
+    
+    - name: update ServiceNow Incident
+      debug:
+        msg: "Incident {{incident_number}} updated successfully"
+      when: update_result.status == 200
+    - name: show updated information in incident
+      debug:
+        var: update_result.json
