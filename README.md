@@ -2,7 +2,7 @@
 
 An end-to-end incident automation platform that connects **ServiceNow, n8n, Ansible/AWX, and Gmail** to automate incident processing, troubleshooting, notifications, and incident updates.
 
-The goal is to reduce repetitive manual operations by connecting incident management with infrastructure automation and creating a closed-loop workflow from incident creation to execution result.
+The goal is to reduce repetitive manual operations by connecting incident management with infrastructure automation and creating a closed-loop workflow from incident creation to automation execution and final incident update.
 
 ---
 
@@ -18,7 +18,7 @@ Traditional infrastructure incident handling often requires engineers to manuall
 - Notify the relevant team
 - Update the incident with the final outcome
 
-When the same process is repeated across multiple incidents, it can consume significant operational time and lead to inconsistent updates.
+When the same process is repeated across multiple incidents, it can consume significant operational time and may lead to inconsistent incident updates.
 
 ---
 
@@ -33,101 +33,36 @@ When an incident enters the workflow:
 3. n8n triggers the required Ansible/AWX automation.
 4. AWX executes the Ansible troubleshooting workflow.
 5. Execution status and results are captured.
-6. Gmail sends a notification containing the result.
-7. The original ServiceNow incident is automatically updated via patch .
+6. Gmail sends a notification containing the execution result.
+7. The original ServiceNow incident is automatically updated using the ServiceNow REST API.
 
-### Closed-Loop Automation
-
-
-ServiceNow Incident
-        │
-        ▼
-      n8n
-        │
-        ▼
-   Ansible / AWX
-        │
-        ▼
-Automated Troubleshooting
-        │
-        ▼
- Execution Result
-      │     │
-      │     └──────────► Gmail Notification
-      │
-      └───────────────► ServiceNow Update
-
-      
-# 🏗️ Architecture
-
-```mermaid
-flowchart TD
-    A[ServiceNow Incident Created] --> B[n8n Workflow Engine]
-    B --> C[Ansible AWX]
-    C --> D[Ansible Automation]
-    D --> E[Automated Troubleshooting]
-    E --> F[Execution Result]
-
-    F --> G[Gmail Notification]
-    F --> H[ServiceNow Incident Update]
-
-### It will render like this conceptually:
-
-**ServiceNow → n8n → AWX → Ansible → Troubleshooting → Result**
-
-and then:
-
-**Result → Gmail**
-
-**Result → ServiceNow Update**
-
-Much cleaner and **far more professional** for a GitHub portfolio.
+This creates a closed-loop incident automation workflow.
 
 ---
 
-### 🔥 Even better version
-
-I'd actually use this slightly more detailed diagram:
-
-```markdown
-# 🏗️ Architecture
+## 🔄 Closed-Loop Automation
 
 ```mermaid
 flowchart LR
+    A[ServiceNow<br/>Incident Created]
+    B[n8n<br/>Workflow Engine]
+    C[Ansible AWX<br/>Job / Workflow]
+    D[Ansible<br/>Automation]
+    E[Automated<br/>Troubleshooting]
+    F[Execution<br/>Result]
+    G[Gmail<br/>Notification]
+    H[ServiceNow<br/>Incident Update]
 
-    A[ServiceNow<br/>Incident] -->|Incident Data| B[n8n<br/>Workflow Engine]
+    A -->|Incident Data| B
+    B -->|API Trigger| C
+    C --> D
+    D --> E
+    E --> F
+    F -->|Notification| G
+    F -->|PATCH / REST API| H
+    H --> A
 
-    B -->|API Trigger| C[Ansible AWX<br/>Job / Workflow]
 
-    C --> D[Ansible<br/>Automation]
-
-    D --> E[Automated<br/>Troubleshooting]
-
-    E --> F[Execution<br/>Result]
-
-    F -->|Notification| G[Gmail]
-
-    F -->|PATCH / Update| A
-
-This clearly shows the **closed loop**:
-
-```text
-ServiceNow
-    ↓
-   n8n
-    ↓
-  AWX
-    ↓
- Ansible
-    ↓
-Troubleshooting
-    ↓
-Result
- ↙     ↘
-Gmail  ServiceNow
-          ↑
-          └── closed loop
-              
 🔄 End-to-End Workflow
 1. Incident Creation
 
@@ -141,13 +76,13 @@ Category        : Network
 Description     : Device connectivity issue
 Status          : Open
 
-The incident becomes the starting point for the automation workflow.
+The incident becomes the starting point of the automation workflow.
 
 2. Incident Processing
 
 n8n acts as the workflow orchestration layer.
 
-The workflow processes information such as:
+The workflow processes relevant incident information such as:
 
 Incident Number
 Short Description
@@ -163,7 +98,7 @@ The required information is then passed to the automation workflow.
 
 n8n communicates with Ansible AWX through its API.
 
-Conceptually:
+The basic flow is:
 
 n8n
  │
@@ -178,9 +113,9 @@ AWX manages the execution of the corresponding Ansible automation.
 
 4. Automated Troubleshooting
 
-Ansible performs the predefined troubleshooting workflow.
+Ansible executes the predefined troubleshooting workflow.
 
-Depending on the incident, automation can perform activities such as:
+Depending on the incident type, automation can perform activities such as:
 
 Device reachability checks
 Connectivity checks
@@ -190,7 +125,7 @@ System health checks
 Command execution
 Configuration validation
 
-The exact actions depend on the automation workflow configured for the incident.
+The exact troubleshooting actions depend on the automation workflow configured for the incident.
 
 5. Execution Result
 
@@ -207,6 +142,9 @@ For a failed execution:
 AWX Job ID : 1025
 Status     : Failed
 Result     : Automation execution failed
+
+The execution result is then passed back into the n8n workflow for further processing.
+
 6. Gmail Notification
 
 The workflow sends an email notification containing the relevant execution information.
@@ -227,9 +165,12 @@ Troubleshooting workflow completed successfully.
 
 AWX Job:
 1024
+
+This provides visibility into the automation result without requiring the engineer to manually check the AWX execution.
+
 7. ServiceNow Incident Update
 
-The automation result is then written back to the original ServiceNow incident.
+After the automation completes, the workflow updates the original ServiceNow incident using the ServiceNow REST API.
 
 Example:
 
@@ -245,19 +186,21 @@ Troubleshooting workflow completed successfully.
 AWX Job:
 1024
 
-This creates a complete feedback loop:
+This creates a complete feedback loop between incident management and automation.
 
-Incident
-   ↓
-Workflow
-   ↓
-Automation
-   ↓
-Result
-   ↓
-Notification
-   ↓
-Incident Update
+Incident Created
+       ↓
+Incident Processing
+       ↓
+Automation Triggered
+       ↓
+Troubleshooting
+       ↓
+Execution Result
+       ↓
+Gmail Notification
+       ↓
+ServiceNow Incident Update
 
 
 🧩 Technology Stack
@@ -272,5 +215,3 @@ Gmail	Automated notifications
 Docker	Containerization
 GitHub Actions	CI/CD automation
 Git	Version control
-
-
