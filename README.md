@@ -56,56 +56,77 @@ Automated Troubleshooting
       │     └──────────► Gmail Notification
       │
       └───────────────► ServiceNow Update
-🏗️ Architecture
-                     ┌──────────────────────┐
-                     │      ServiceNow      │
-                     │                      │
-                     │   Incident Created   │
-                     └──────────┬───────────┘
-                                │
-                                │ Incident Data
-                                ▼
-                     ┌──────────────────────┐
-                     │         n8n          │
-                     │                      │
-                     │ Workflow             │
-                     │ Orchestration        │
-                     └──────────┬───────────┘
-                                │
-                                │ API Trigger
-                                ▼
-                     ┌──────────────────────┐
-                     │     Ansible AWX      │
-                     │                      │
-                     │ Job / Workflow       │
-                     │ Execution            │
-                     └──────────┬───────────┘
-                                │
-                                ▼
-                     ┌──────────────────────┐
-                     │      Ansible         │
-                     │                      │
-                     │ Automated             │
-                     │ Troubleshooting      │
-                     └──────────┬───────────┘
-                                │
-                                ▼
-                     ┌──────────────────────┐
-                     │   Execution Result   │
-                     │                      │
-                     │ Success / Failure    │
-                     │ Status / Output      │
-                     └──────────┬───────────┘
-                                │
-                     ┌──────────┴───────────┐
-                     │                      │
-                     ▼                      ▼
-              ┌──────────────┐       ┌──────────────┐
-              │    Gmail     │       │  ServiceNow  │
-              │              │       │              │
-              │ Notification │       │ Incident     │
-              │              │       │ Update       │
-              └──────────────┘       └──────────────┘
+
+      
+# 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    A[ServiceNow Incident Created] --> B[n8n Workflow Engine]
+    B --> C[Ansible AWX]
+    C --> D[Ansible Automation]
+    D --> E[Automated Troubleshooting]
+    E --> F[Execution Result]
+
+    F --> G[Gmail Notification]
+    F --> H[ServiceNow Incident Update]
+
+### It will render like this conceptually:
+
+**ServiceNow → n8n → AWX → Ansible → Troubleshooting → Result**
+
+and then:
+
+**Result → Gmail**
+
+**Result → ServiceNow Update**
+
+Much cleaner and **far more professional** for a GitHub portfolio.
+
+---
+
+### 🔥 Even better version
+
+I'd actually use this slightly more detailed diagram:
+
+```markdown
+# 🏗️ Architecture
+
+```mermaid
+flowchart LR
+
+    A[ServiceNow<br/>Incident] -->|Incident Data| B[n8n<br/>Workflow Engine]
+
+    B -->|API Trigger| C[Ansible AWX<br/>Job / Workflow]
+
+    C --> D[Ansible<br/>Automation]
+
+    D --> E[Automated<br/>Troubleshooting]
+
+    E --> F[Execution<br/>Result]
+
+    F -->|Notification| G[Gmail]
+
+    F -->|PATCH / Update| A
+
+This clearly shows the **closed loop**:
+
+```text
+ServiceNow
+    ↓
+   n8n
+    ↓
+  AWX
+    ↓
+ Ansible
+    ↓
+Troubleshooting
+    ↓
+Result
+ ↙     ↘
+Gmail  ServiceNow
+          ↑
+          └── closed loop
               
 🔄 End-to-End Workflow
 1. Incident Creation
