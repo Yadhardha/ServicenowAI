@@ -40,28 +40,32 @@ This creates a closed-loop incident automation workflow.
 
 ---
 
-## 🔄 Closed-Loop Automation
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
-    A[ServiceNow<br/>Incident Created]
-    B[n8n<br/>Workflow Engine]
-    C[Ansible AWX<br/>Job / Workflow]
-    D[Ansible<br/>Automation]
-    E[Automated<br/>Troubleshooting]
-    F[Execution<br/>Result]
-    G[Gmail<br/>Notification]
-    H[ServiceNow<br/>Incident Update]
+    A["ServiceNow - Incident Created"]
+    B["n8n - Workflow Engine"]
+    C["Ansible AWX - Job or Workflow"]
+    D["Ansible - Automation"]
+    E["Automated Troubleshooting"]
+    F["Execution Result"]
+    G["Gmail - Notification"]
+    H["ServiceNow - Incident Update"]
 
-    A -->|Incident Data| B
-    B -->|API Trigger| C
+    A --> B
+    B --> C
     C --> D
     D --> E
     E --> F
-    F -->|Notification| G
-    F -->|PATCH / REST API| H
+    F --> G
+    F --> H
     H --> A
+```
 
+---
+
+## 🔄 End-to-End Workflow
 
 🔄 End-to-End Workflow
 1. Incident Creation
