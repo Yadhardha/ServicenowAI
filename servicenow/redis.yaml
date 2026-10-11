@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: redis-image
+  namespace: aiops-test
+  labels:
+    app: redis-image
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: redis-image
+
+  template:
+    metadata:
+      labels:
+        app: redis-image
+
+    spec:
+      containers:
+        - name: redis
+          image: redis:latest
+          imagePullPolicy: IfNotPresent

@@ -1,10 +1,14 @@
 import requests
 from requests.auth import HTTPBasicAuth
 
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 URL = "https://dev381973.service-now.com/"
-USERNAME = "admin"
-PASSWORD = "%Ti^D9WlWzu4"
+USERNAME = os.getenv("USERNAME")
+PASSWORD = os.getenv("PASSWORD")
 
 INCIDENT_URL = f"{URL}/api/now/table/incident"
 def create_incident(incident_data):
@@ -24,7 +28,7 @@ def create_incident(incident_data):
     incident_number = result["number"]
     print("Incident created :",incident_number)
 
-
+    """
     n8n_data = {
         "number":incident_number,
         "short_description":incident_data["short_description"],
@@ -32,7 +36,10 @@ def create_incident(incident_data):
         "priority": incident_data["priority"]
 
     }
+    """
 
+
+    """
     n8n_url = "https://yadhardha45.app.n8n.cloud/webhook-test/Incident_created"
 
     n8n_response = requests.post(n8n_url,json= n8n_data,headers={"Content-type":"application/json"})
@@ -40,3 +47,4 @@ def create_incident(incident_data):
 
     print(n8n_response.status_code)
     print(n8n_response.text)
+    """

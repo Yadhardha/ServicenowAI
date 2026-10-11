@@ -17,10 +17,10 @@ spec:
     spec:
       containers:
         - name: payment-api 
-          image: busybox
-          command: ["/bin/sh","-c"]
-          args:
-            - echo :"Application Crashed"; exit 1
+          image: busybox:1.31.0
+          #command: ["/bin/sh","-c"]
+          #args:
+           # - echo :"Application Crashed"; exit 1
           #image: nginx:latest
           #ports:
           #  - containerPort: 80

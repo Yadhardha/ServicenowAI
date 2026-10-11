@@ -5,11 +5,14 @@
 
   vars_files:
     - vars.yaml
-
+  # fetch incidents
   tasks:
-    - name : get open incidents of last 10 mins
+      #stage 1 fetch all open incidents
+
+      #task 1 
+    - name : get open incidents of last 20 mins
       uri:
-        url : "https://dev381973.service-now.com/api/now/table/incident?sysparm_query=active=true^opened_at>=javascript:gs.minutesAgoStart(10)"
+        url : "https://dev381973.service-now.com/api/now/table/incident?sysparm_query=active=true^ORDERBYDESCopened_at&sysparm_fields=sys_id,number,short_description,state,active,opened_at&sysparm_limit=1"
         method: GET
         user: "{{servicenow_username}}"
         password: "{{servicenow_password}}"
@@ -18,11 +21,12 @@
           Accept: "application/json"
         return_content: yes
       register: incidents
-
+    # display incidents
     - name : Display incidents
       debug:
         var: incidents.json.result
-
+    # Process each incidents 
+    #task 2
     - name : Extract Kubernetes detail
       set_fact:
         pod_name: "{{ item.short_description | regex_search('Pod:\\s*([a-zA-Z0-9-]+)', '\\1') | first }}"
@@ -42,17 +46,8 @@
       command : kubectl describe pod {{pod_name}} -n {{namespace}}
       register: describe_pod
       changed_when: false
-    - name : pods logs
-      command: kubectl logs {{pod_name}} -n {{namespace}}
-      register: pods_log
-      changed_when: false
-      ignore_errors: yes
-    - name: Get Previous logs 
-      command: kubectl logs {{pod_name}} -n {{namespace}} --previous
-      register: previous_logs
-      ignore_errors : yes
-      changed_when: false
 
+      # task 3
     - name : update ServiceNow Incident
       uri:
         url: "https://dev381973.service-now.com/api/now/table/incident/{{ incident_sys_id }}"
@@ -79,12 +74,6 @@
             ======POD Description =====
             {{describe_pod.stdout}}
 
-            ====== POD Logs =========
-            {{pods_log.stdout}}
-            ====== Previous logs ======
-            {{previous_logs.stdout}}
-
-
         status_code: 200
       register: update_result
 
@@ -97,3 +86,92 @@
     - name: show updated information in incident
       debug:
         var: update_result.json
+
+    - name : Get pod health status
+      command: >
+        kubectl get pod {{ pod_name }}
+        -n {{ namespace }}
+        -o jsonpath='{.status.phase}{" "}{.status.containerStatuses[0].ready}'
+      register: pod_health
+      changed_when: false
+      failed_when: false
+
+      #task 4
+    - name: Display pod health status
+      debug:
+        msg:
+          - "Incident: {{incident_number}}"
+          - "Pod: {{pod_name}}"
+          - "namespace: {{namespace}}"
+          - "pod_health: {{pod_health.stdout}}"
+
+    #task 5
+    - name : Add recovery proof for servicenow incidents
+      uri:
+        url: "https://dev381973.service-now.com/api/now/table/incident/{{ incident_sys_id }}"
+        method: PATCH 
+        user: "{{servicenow_username}}"
+        password: "{{servicenow_password}}"
+        force_basic_auth: yes
+        headers:
+          Accept: "application/json"
+          Content-type: "application/json"
+        body_format: json 
+        body:
+          work_notes: |
+            ======> Health Verification<=======
+
+            Pod : {{pod_name}}
+
+            Namespace : {{namespace}}
+
+            Health check result: 
+            {{pod_health.stdout}}
+
+            Verification:
+
+            we could see pod is running successfully
+            Kubernetes pod is healthy
+
+            Incident can be resolved
+
+        status_code: 200
+      when: pod_health.stdout == "Running True"
+
+      #task 6
+
+    - name: Close incident
+      uri:
+        url: "https://dev381973.service-now.com/api/now/table/incident/{{ incident_sys_id }}"
+        method: PATCH 
+        user: "{{servicenow_username}}"
+        password: "{{servicenow_password}}"
+        force_basic_auth: yes
+        headers:
+          Accept: "application/json"
+          Content-type: "application/json"
+        body_format: json 
+        body:
+          state: "6"
+          incident_state: "6"
+          close_code: "solution provided"
+          close_notes: |
+            issue resolved successfully
+            Pod: {{pod_name}}
+            Namespace: {{namespace}}
+            Container: {{container}}
+
+              Health verification:
+              {{pod_health.stdout}}
+
+              Pod is Running and Container is Ready.
+
+              Recovery was verified successfully by Ansible AWX.
+          status_code: 200
+      when: pod_health.stdout == "Running True"
+
+
+
+    - name: Automation completion 
+      ansible.builtin.debug:
+        msg: "Automation completed"
